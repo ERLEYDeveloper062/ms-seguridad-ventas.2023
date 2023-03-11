@@ -12,7 +12,7 @@ import {
   getModelSchemaRef, HttpErrors, param, patch, post, put, requestBody,
   response
 } from '@loopback/rest';
-import {Credenciales, Login, Usuario} from '../models';
+import {Credenciales, FactorDeAutenticacionPorCodigo, Login, Usuario} from '../models';
 import {LoginRepository, UsuarioRepository} from '../repositories';
 import {SeguridadUsuarioService} from '../services';
 
@@ -193,4 +193,29 @@ export class UsuarioController {
     }
     return new HttpErrors[401]("Credenciales incorrectas");
   }
+
+  @post('/verificar-2fa')
+  @response(200, {
+    description: "validar un codigo de 2fa",
+    content: {'application/json': {schema: getModelSchemaRef(FactorDeAutenticacionPorCodigo)}}
+  })
+  async VerificarCodigo2fa(
+    @requestBody(
+      {
+        content: {
+          'application/json': {
+            schema: getModelSchemaRef(FactorDeAutenticacionPorCodigo)
+          }
+        }
+      }
+    )
+    credenciales: FactorDeAutenticacionPorCodigo
+  ): Promise<object> {
+    let login = await this.servicioSeguridad.validarCodigo2fa(credenciales);
+    if (login) {
+      return Login;
+    }
+    return new HttpErrors[401]("Codigo de 2fa invalido para el usuario definido");
+  }
+
 }
