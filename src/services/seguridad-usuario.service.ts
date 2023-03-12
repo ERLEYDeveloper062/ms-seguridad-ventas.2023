@@ -1,9 +1,11 @@
 import { /* inject, */ BindingScope, injectable} from '@loopback/core';
 import {repository} from '@loopback/repository';
-import {Credenciales, FactorDeAutenticacionPorCodigo, Login, Usuario} from '../models';
+import {ConfiguracionSeguridad} from '../config/seguridad.config';
+import {Credenciales, FactorDeAutenticacionPorCodigo, Usuario} from '../models';
 import {LoginRepository, UsuarioRepository} from '../repositories';
 const generator = require('generate-password');
 const MD5 = require("crypto-js/md5");
+const jwt = require('jsonwebtoken');
 
 @injectable({scope: BindingScope.TRANSIENT})
 export class SeguridadUsuarioService {
@@ -57,7 +59,7 @@ export class SeguridadUsuarioService {
    * @returns el registro del login o null
    */
 
-  async validarCodigo2fa(credenciales2fa: FactorDeAutenticacionPorCodigo): Promise<Login | null> {
+  async validarCodigo2fa(credenciales2fa: FactorDeAutenticacionPorCodigo): Promise<Usuario | null> {
     let login = await this.repositorioLogin.findOne({
       where: {
         usuarioId: credenciales2fa.usuarioId,
@@ -65,7 +67,25 @@ export class SeguridadUsuarioService {
         estadoCodigof2: false
       }
     });
-    return (login) ? login : null;
+    if (login) {
+      let usuario = await this.repositorioUsuario.findById(credenciales2fa.usuarioId);
+      return usuario;
+    }
+    return null;
   }
 
+  /**
+   * Generacion de jwt
+   * @param usuario informacion del usuario
+   * @returns token
+   */
+  crearToken(usuario: Usuario): string {
+    let datos = {
+      name: `${usuario.primerNombre} ${usuario.segundoNombre} ${usuario.primerApellido} ${usuario.segundoApellido}`,
+      role: usuario.rolId,
+      email: usuario.correo
+    };
+    let token = jwt.sign(datos, ConfiguracionSeguridad.claveJWT);
+    return token;
+  }
 }

@@ -164,7 +164,7 @@ export class UsuarioController {
   @post('/identificar-usuario')
   @response(200, {
     description: "Identificar un usuario por correo y clave",
-    content: {'application/json': {schema: getModelSchemaRef(Credenciales)}}
+    content: {'application/json': {schema: getModelSchemaRef(Usuario)}}
   })
   async indentificarUsuario(
     @requestBody(
@@ -181,6 +181,7 @@ export class UsuarioController {
     let usuario = await this.servicioSeguridad.identificarUsuario(credenciales);
     if (usuario) {
       let codigo2fa = this.servicioSeguridad.crearTextoAleatorio(5);
+      console.log(codigo2fa);
       let login: Login = new Login();
       login.usuarioId = usuario._id!;
       login.codigo2fa = codigo2fa;
@@ -188,6 +189,7 @@ export class UsuarioController {
       login.token = "";
       login.estadoToken = false;
       this.repositorioLogin.create(login);
+      usuario.clave = "";
       // notificar al usuario via correo o sms
       return usuario;
     }
@@ -197,7 +199,7 @@ export class UsuarioController {
   @post('/verificar-2fa')
   @response(200, {
     description: "validar un codigo de 2fa",
-    content: {'application/json': {schema: getModelSchemaRef(FactorDeAutenticacionPorCodigo)}}
+    //content: {'application/json': {schema: getModelSchemaRef(FactorDeAutenticacionPorCodigo)}}
   })
   async VerificarCodigo2fa(
     @requestBody(
@@ -211,9 +213,28 @@ export class UsuarioController {
     )
     credenciales: FactorDeAutenticacionPorCodigo
   ): Promise<object> {
-    let login = await this.servicioSeguridad.validarCodigo2fa(credenciales);
-    if (login) {
-      return Login;
+    let usuario = await this.servicioSeguridad.validarCodigo2fa(credenciales);
+    if (usuario) {
+      let token = this.servicioSeguridad.crearToken(usuario)
+      if (usuario) {
+        usuario.clave = "";
+        try {
+          this.usuarioRepository.logins(usuario._id).patch(
+            {
+              estadoCodigof2: true,
+              token: token
+            },
+            {
+              estadoCodigof2: false
+            });
+        } catch {
+          console.log("No se ha generado el cambio del estado del token en la base de datos.");
+        }
+        return {
+          user: usuario,
+          token: token
+        };
+      }
     }
     return new HttpErrors[401]("Codigo de 2fa invalido para el usuario definido");
   }

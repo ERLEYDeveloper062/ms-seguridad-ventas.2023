@@ -23,8 +23,7 @@ export class Login extends Entity {
   estadoCodigof2: boolean;
 
   @property({
-    type: 'string',
-    required: true,
+    type: 'string'
   })
   token: string;
 
