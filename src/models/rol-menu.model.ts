@@ -34,6 +34,12 @@ export class RolMenu extends Entity {
   descargar: boolean;
 
   @property({
+    type: 'boolean',
+    required: true,
+  })
+  eliminar: boolean;
+
+  @property({
     type: 'string',
   })
   rolId?: string;
